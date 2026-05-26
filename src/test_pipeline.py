@@ -43,7 +43,7 @@ def test_normalization_and_shapes():
     print("✅ Translation invariance verified: Wrist landmark is successfully anchored at (0, 0, 0).")
 
     # 3. Check Scale Invariance
-    # The distance from wrist (0) to middle finger base (9) should scale to a norm of 1.0
+    # Distance from wrist (0) to middle finger base (9) should scale to a norm of 1.0
     for frame_idx in range(matrix.shape[0]):
         frame = matrix[frame_idx]
         if not np.all(frame == 0):

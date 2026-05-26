@@ -44,11 +44,11 @@ def augment_frame(frame, flip=False, brightness_factor=1.0, angle=0):
     """
     augmented = frame.copy()
     
-    # 1. Handle left vs right-handedness via horizontal flipping
+    # Handle left vs right-handedness via horizontal flipping
     if flip:
         augmented = cv2.flip(augmented, 1)
         
-    # 2. Adjust Brightness
+    # Adjust Brightness
     if brightness_factor != 1.0:
         # Convert to float to avoid uint8 overflow issues
         hsv = cv2.cvtColor(augmented, cv2.COLOR_BGR2HSV).astype(np.float32)
@@ -56,7 +56,7 @@ def augment_frame(frame, flip=False, brightness_factor=1.0, angle=0):
         hsv[:, :, 2] = np.clip(hsv[:, :, 2], 0, 255)
         augmented = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
         
-    # 3. Handle subtle spatial rotations
+    # Handle subtle spatial rotations
     if angle != 0:
         h, w = augmented.shape[:2]
         center = (w // 2, h // 2)
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     output_feature_dir = "data/processed_features"
     os.makedirs(output_feature_dir, exist_ok=True)
 
-    # We want to process all splits
+    # Process all splits
     splits = ["train", "val", "test"]
 
     for split in splits:
@@ -169,8 +169,6 @@ if __name__ == "__main__":
             full_video_path = os.path.join(raw_video_dir, video_filename)
             full_output_path = os.path.join(output_feature_dir, feature_filename)
 
-            # CRITICAL CV PRINCIPLE: Only augment the training data!
-            # Augmenting validation or test data skews evaluation metrics.
             should_augment = True if split == "train" else False
 
             if os.path.exists(full_video_path):
