@@ -1,0 +1,8 @@
+{
+  "python.defaultInterpreterPath": "c:/Users/Gustavo Vegas/Documents/GitHub/ASL_Audio/.venv/Scripts/python.exe",
+  "python.analysis.extraPaths": [
+    "./src",
+    "./.venv/Lib/site-packages"
+  ],
+  "python.analysis.typeCheckingMode": "off"
+}

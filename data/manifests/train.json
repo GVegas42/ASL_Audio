@@ -1,0 +1,12 @@
+[
+    {
+        "feature_file": "69529.npy",
+        "label_string": "wet",
+        "label_int": 0
+    },
+    {
+        "feature_file": "69527.npy",
+        "label_string": "we",
+        "label_int": 1
+    }
+]

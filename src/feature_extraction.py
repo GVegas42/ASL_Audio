@@ -1,17 +1,42 @@
 import os
 import random
 import cv2
-import mediapipe as mp
 import numpy as np
 
-# Initialize MediaPipe Hands
-mp_hands = mp.solutions.hands
-hands_detector = mp_hands.Hands(
-    static_image_mode=False,  # Set to False to treat frames as video sequence tracking
-    max_num_hands=1,          # Focus on dominant hand for baseline configuration
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
+from mediapipe.tasks.python.core import base_options as mp_base_options
+from mediapipe.tasks.python.vision.core import image as mp_image
+from mediapipe.tasks.python.vision import hand_landmarker
+
+MP_HAND_LANDMARKER_MODEL_PATH = os.getenv(
+    "MP_HAND_LANDMARKER_MODEL_PATH",
+    "data/models/hand_landmarker.task"
 )
+
+
+def create_hands_detector(
+    model_path: str | None = None,
+    num_hands: int = 1,
+    min_detection_confidence: float = 0.5,
+    min_tracking_confidence: float = 0.5,
+):
+    model_path = model_path or MP_HAND_LANDMARKER_MODEL_PATH
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(
+            f"Hand landmarker model not found at '{model_path}'. "
+            "Please download a compatible MediaPipe hand_landmarker task bundle "
+            "and set MP_HAND_LANDMARKER_MODEL_PATH to its path."
+        )
+
+    base_options = mp_base_options.BaseOptions(model_asset_path=model_path)
+    options = hand_landmarker.HandLandmarkerOptions(
+        base_options=base_options,
+        num_hands=num_hands,
+        min_hand_detection_confidence=min_detection_confidence,
+        min_hand_presence_confidence=min_detection_confidence,
+        min_tracking_confidence=min_tracking_confidence,
+    )
+    return hand_landmarker.HandLandmarker.create_from_options(options)
+
 
 def augment_frame(frame, flip=False, brightness_factor=1.0, angle=0):
     """
@@ -68,7 +93,7 @@ def normalize_landmarks(landmarks_list):
     normalized_coords = translated_coords / scale_factor
     return normalized_coords
 
-def process_video(video_path, output_npy_path, augment=False):
+def process_video(video_path, output_npy_path, augment=False, model_path=None):
     """
     Reads video frames, runs MediaPipe, extracts, normalizes, and saves landmarks.
     """
@@ -80,35 +105,28 @@ def process_video(video_path, output_npy_path, augment=False):
     brightness = random.uniform(0.8, 1.2) if augment else 1.0
     rotation_angle = random.randint(-10, 10) if augment else 0
 
-    while cap.isOpened():
-        success, frame = cap.read()
-        if not success:
-            break
-            
-        # Run OpenCV Augmentations
-        if augment:
-            frame = augment_frame(frame, flip=flip, brightness_factor=brightness, angle=rotation_angle)
-            
-        # MediaPipe requires RGB color formatting
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = hands_detector.process(rgb_frame)
-        
-        # If hand is detected, compile keypoints
-        if results.multi_hand_landmarks:
-            # Analyze dominant/first hand found in frame
-            hand_landmarks = results.multi_hand_landmarks[0]
-            
-            frame_coords = []
-            for lm in hand_landmarks.landmark:
-                frame_coords.append([lm.x, lm.y, lm.z])
-                
-            # Perform geometric matrix normalization
-            normalized_frame_coords = normalize_landmarks(frame_coords)
-            sequence_data.append(normalized_frame_coords)
-        else:
-            # Strategy: If a frame fails to capture a hand, pad with a zero matrix 
-            # to maintain consistent temporal sequence length later.
-            sequence_data.append(np.zeros((21, 3)))
+    with create_hands_detector(model_path=model_path) as hands_detector:
+        while cap.isOpened():
+            success, frame = cap.read()
+            if not success:
+                break
+
+            # Run OpenCV augmentations
+            if augment:
+                frame = augment_frame(frame, flip=flip, brightness_factor=brightness, angle=rotation_angle)
+
+            # MediaPipe Tasks expects RGB pixel data.
+            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            mp_image_obj = mp_image.Image(mp_image.ImageFormat.SRGB, rgb_frame)
+            results = hands_detector.detect(mp_image_obj)
+
+            if results and results.hand_landmarks:
+                hand_landmarks = results.hand_landmarks[0]
+                frame_coords = [[lm.x, lm.y, lm.z] for lm in hand_landmarks]
+                normalized_frame_coords = normalize_landmarks(frame_coords)
+                sequence_data.append(normalized_frame_coords)
+            else:
+                sequence_data.append(np.zeros((21, 3)))
             
     cap.release()
     
@@ -146,7 +164,7 @@ if __name__ == "__main__":
             # Reconstruct paths based on the manifest entries
             # e.g., feature_file might be "06849.npy", video is "06849.mp4"
             feature_filename = sample["feature_file"]
-            video_filename = feature_filename.replace(".npy", ".mp4")
+            video_filename = os.path.splitext(feature_filename)[0] + ".mp4"
             
             full_video_path = os.path.join(raw_video_dir, video_filename)
             full_output_path = os.path.join(output_feature_dir, feature_filename)

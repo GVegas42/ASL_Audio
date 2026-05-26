@@ -16,9 +16,7 @@ def test_normalization_and_shapes():
     feature_dir = "data/processed_features"
     npy_files = [f for f in os.listdir(feature_dir) if f.endswith('.npy')]
     
-    if not npy_files:
-        print("❌ No processed .npy files found in data/processed_features. Run feature_extraction.py first.")
-        return
+    assert npy_files, "No processed .npy files found in data/processed_features. Run feature_extraction.py first."
 
     # Test the first available processed file
     sample_path = os.path.join(feature_dir, npy_files[0])
