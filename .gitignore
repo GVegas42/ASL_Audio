@@ -1,0 +1,12 @@
+# Large data directories - regenerate via the pipeline, don't track in git
+data/raw_videos/
+data/processed_features/
+
+# Python
+__pycache__/
+*.pyc
+
+# LaTeX build artifacts
+report/*.aux
+report/*.log
+report/*.out

@@ -60,7 +60,7 @@ def organize_dataset(json_path, raw_videos_dir, target_words=None):
     print(f"Train samples: {len(split_manifests['train'])} | Val: {len(split_manifests['val'])} | Test: {len(split_manifests['test'])}")
 
 if __name__ == "__main__":
-    vocabulary_subset = ["we","wet"]
+    vocabulary_subset = None
     
     organize_dataset(
         json_path="data/WLASL_v0.3.json",
